@@ -1,0 +1,84 @@
+#include <iostream>
+#include <vector>
+#include <ctime>
+#include <cstdlib>
+#include <cmath>
+using namespace std;
+struct Point {
+	int x, y;
+	Point(int x, int y) :x(x), y(y){}
+};
+struct MarkPoint{
+	Point pt;
+	bool mark;//表示是否删掉了
+	double angle;//表示极角
+	MarkPoint(Point pt, bool mark, double angle) :pt(pt), mark(mark), angle(angle){}
+};
+//生成随机点
+void gen_rand_pts(vector<MarkPoint> &mpts,int low, int high, int n)
+{
+	srand(time(NULL));
+	for (int i = 0; i != n; ++i)
+	{
+		MarkPoint mp(Point(low + rand() % (high - low + 1), low + rand() % (high - low + 1)), true, 0.0);
+		vector<MarkPoint>::iterator beg = mpts.begin(), end = mpts.end();
+		while (beg != end)
+		{
+			if (beg->pt.x == mp.pt.x&& beg->pt.y == mp.pt.y)
+			{
+				break;
+			}
+			++beg;
+		}
+		if (beg != end)
+		{
+			--i;
+			continue;
+		}
+		mpts.push_back(mp);
+	}
+}
+//计算极角
+void calc_angle(vector<MarkPoint> &mpts, vector<Point> &pts)
+{
+	//找到最下面的点
+	vector<MarkPoint>::iterator beg = mpts.begin(), end = mpts.end(), miny_ptr=beg;
+	int miny = beg->pt.y;
+	++beg;
+	while (beg!=end)
+	{
+		if (beg->pt.y < miny)
+		{
+			miny = beg->pt.y;
+			miny_ptr = beg;
+		}
+		++beg;
+	}
+	beg = mpts.begin();
+	swap<MarkPoint>(*beg, *miny_ptr);
+	//根据上面找到的点 分别计算每个点的极角 
+	beg = mpts.begin();
+	miny_ptr = beg;
+	++beg;
+	end = mpts.end();
+	while (beg!=end)
+	{
+		beg->angle = atan((double)(beg->pt.y - miny_ptr->pt.y) / (beg->pt.x - miny_ptr->pt.x));
+		++beg;
+	}
+	//对上面找到的极角排序 
+	//删除极角相同 距离极点较近的点
+	//将得到的结果 输入pts
+}
+void graham_scan(int low,int high,int n)//生成[low,low]-[high,high]之间的n个点
+{
+	//生成随机点
+	//计算极角，并对极角排序
+	//依次对上步结果集 进行考察 用栈实现
+	//输出栈中的 点即可
+}
+int main()
+{
+	cout << atan(1.0) << endl;
+	return 0;
+}
