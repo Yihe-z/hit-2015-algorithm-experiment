@@ -1,0 +1,240 @@
+#include <iostream>
+#include <vector>
+#include <ctime>
+#include <algorithm>
+#include <fstream>
+using namespace std;
+#if 1
+struct Point{
+	int x, y;
+	Point(int x = 0, int y = 0) :x(x), y(y){}
+};
+struct MarkPoint{
+	int mark;//表示当前点是否被删除了 1 表示还在 0 表示被删除了
+	Point pt;
+	MarkPoint(int mark = 0, Point pt = Point()) :mark(mark), pt(pt){}
+};
+struct Vec3b{
+	int a, b, c;
+	Vec3b(int a = 0, int b = 0, int c = 0) :a(a), b(b), c(c){}
+};
+struct Vec4b{
+	int a, b, c, d;
+	Vec4b(int a = 0, int b = 0, int c = 0, int d = 0) :a(a), b(b), c(c), d(d){}
+	int & operator[] (int i)
+	{
+		switch (i)
+		{
+		case 0:
+			return a;
+		case 1:
+			return b;
+		case 2:
+			return c;
+		case 3:
+			return d;
+		}
+	}
+};
+//随机生成n个点,并对mark进行初始化
+void randGenPoint(vector<MarkPoint> &pts, const Point lowPt, const Point upPt, const int n)
+{
+	srand(time(NULL));
+	int minX = lowPt.x, maxX = upPt.x;
+	int minY = lowPt.y, maxY = upPt.y;
+	for (int i = 0; i != n; ++i)
+	{
+		pts.push_back(MarkPoint(1, Point(minX + rand() % (maxX - minX + 1), minY + rand() % (maxY - minY + 1))));
+	}
+}
+//比较枚举
+enum EnumCmp{ ASCX, DESCX };
+//比较函数
+class Compare{
+private:
+	EnumCmp comp;
+public:
+	Compare(EnumCmp cmp) :comp(cmp){}
+	bool operator() (Point p1, Point p2)
+	{
+		switch (comp)
+		{
+		case ASCX:
+			return p1.x < p2.x;
+		case DESCX:
+			return p1.x>p2.x;
+		}
+	}
+};
+//将pts中的点以逆时针重排 
+void counterclockOutput(vector<Point> &pts)
+{
+	Point left = Point(10000, 0), right = Point(0, 0);
+	int left_index, right_index;
+	//找到 左右两边点
+	for (int i = 0; i != pts.size(); ++i)
+	{
+		if (pts[i].x < left.x)
+		{
+			left = pts[i];
+			left_index = i;
+		}
+		if (pts[i].x>right.x)
+		{
+			right = pts[i];
+			right_index = i;
+		}
+	}
+	double line_k = (double)(right.y - left.y) / (right.x - left.x);
+	vector<Point> upPts, lowPts;
+	//将所有点划分为上边点与下边点
+	for (int i = 0; i != pts.size(); ++i)
+	{
+		double res = pts[i].y - left.y - line_k*(pts[i].x - left.x);
+		if (res > 0)
+		{
+			upPts.push_back(pts[i]);
+		}
+		else if (res < 0)
+		{
+			lowPts.push_back(pts[i]);
+		}
+	}
+	lowPts.push_back(pts[left_index]);
+	upPts.push_back(pts[right_index]);
+	//下边点 升序 上边点 降序
+	sort(lowPts.begin(), lowPts.end(), Compare(ASCX));
+	sort(upPts.begin(), upPts.end(), Compare(DESCX));
+	int k = 0;
+	for (int i = 0; i != lowPts.size(); ++i, ++k)
+	{
+		pts[k] = lowPts[i];
+	}
+	for (int i = 0; i != upPts.size(); ++i, ++k)
+	{
+		pts[k] = upPts[i];
+	}
+}
+//判断三点是否形成三角形
+bool isTriangle(vector<MarkPoint> &pts, const Vec3b &tri)
+{
+	return (pts[tri.a].pt.y - pts[tri.b].pt.y)*(pts[tri.a].pt.x - pts[tri.b].pt.x) != (pts[tri.c].pt.y - pts[tri.b].pt.y)*(pts[tri.c].pt.x - pts[tri.b].pt.x);
+}
+//判断一个点是否位于三角形内
+bool isInTri(vector<MarkPoint> &pts, const Vec4b &four)//第一个点为判断点 后三个为三角形上点
+{
+	for (int i = 1; i != 4; ++i)
+	{
+		Vec4b tv = four;
+		swap<int>(tv[1], tv[i]);
+		if (
+			((pts[tv[0]].pt.y - pts[tv[3]].pt.y)*(pts[tv[2]].pt.x - pts[tv[3]].pt.x) - (pts[tv[2]].pt.y - pts[tv[3]].pt.y)*(pts[tv[0]].pt.x - pts[tv[3]].pt.x))
+			*((pts[tv[1]].pt.y - pts[tv[3]].pt.y)*(pts[tv[2]].pt.x - pts[tv[3]].pt.x) - (pts[tv[2]].pt.y - pts[tv[3]].pt.y)*(pts[tv[1]].pt.x - pts[tv[3]].pt.x)) < 0
+			)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+//对四点进行处理
+void processFourPoint(vector<MarkPoint> &pts, const Vec4b &four)
+{
+	for (int i = 0; i != 4; ++i)
+	{
+		Vec4b tv = four;
+		swap<int>(tv[0], tv[i]);
+		if (isTriangle(pts, Vec3b(tv[1], tv[2], tv[3])))
+		{
+			if (isInTri(pts, tv))
+			{
+				pts[tv[0]].mark = 0;
+				return;
+			}
+		}
+	}
+}
+//输出文件
+void outputFile(vector<Point> &pts, string file_path)
+{
+	ofstream out(file_path);
+	if (out.is_open())
+	{
+		for (int i = 0; i != pts.size(); ++i)
+		{
+			out << pts[i].x << " " << pts[i].y << endl;
+		}
+	}
+	out.close();
+}
+void bruteForce(Point lowPt, Point upPt, int n)
+{
+	//生成随机点
+	vector<MarkPoint> pts;
+	//randGenPoint(pts, lowPt, upPt, n);
+	for (int i = 0; i != n; ++i)
+	{
+		for (int j = 0; j != n; ++j)
+		{
+			pts.push_back(MarkPoint(1, Point(i, j)));
+		}
+	}
+	n = n*n;
+
+	//判断点数
+	if (n>3)
+	{
+		//处理所有的四点对
+		for (int i = 0; i != n - 3; ++i)
+		{
+			for (int j = i + 1; j != n - 2; ++j)
+			{
+				for (int k = j + 1; k != n - 1; ++k)
+				{
+					for (int m = k + 1; m != n; ++m)
+					{
+						processFourPoint(pts, Vec4b(i, j, k, m));
+					}
+				}
+			}
+		}
+		//将剩下的点 保存在新vector中
+		vector<Point> savePts;
+		for (int i = 0; i != n; ++i)
+		{
+			if (pts[i].mark != 0)
+			{
+				savePts.push_back(pts[i].pt);
+			}
+		}
+		//以逆时针重排
+		counterclockOutput(savePts);
+		//输出到文件
+		outputFile(savePts, "convex_hull.txt");
+	}
+}
+int main()
+{
+	bruteForce(Point(), Point(), 3);
+	return 0;
+}
+#endif 
+#if 0
+int main()
+{
+	cout << "hello world" << endl;
+	vector<int> ivec;
+	for (int i = 0; i != 3; ++i)
+	{
+		ivec.push_back(i);
+	}
+	vector<int>::iterator beg = ivec.begin(), end = ivec.end();
+	while (beg != end)
+	{
+		cout << *beg << ends;
+		++beg;
+	}
+	cout << endl;
+	return 0;
+}
+#endif 
